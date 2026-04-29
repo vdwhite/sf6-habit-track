@@ -1,0 +1,62 @@
+name: Security Baseline
+
+on:
+  pull_request:
+  push:
+    branches: [v0]
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Enforce npm audit (high/critical)
+        run: npm audit --audit-level=high
+
+      - name: Enforce no CSP null
+        run: |
+          if grep -q '"csp":[[:space:]]*null' src-tauri/tauri.conf.json; then
+            echo "Blocked: src-tauri/tauri.conf.json has csp=null"
+            exit 1
+          fi
+
+      - name: Enforce safe target=_blank usage
+        run: |
+          if rg -n --pcre2 'target="_blank"(?![^>]*rel="noopener noreferrer")' src; then
+            echo "Blocked: target=\"_blank\" must include rel=\"noopener noreferrer\""
+            exit 1
+          fi
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit (informational for v0)
+        run: |
+          mkdir -p artifacts
+          (
+            cd src-tauri
+            cargo audit
+          ) | tee artifacts/cargo-audit.txt
+        continue-on-error: true
+
+      - name: Upload cargo audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-audit-report
+          path: artifacts/cargo-audit.txt
