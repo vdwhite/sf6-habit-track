@@ -19,6 +19,14 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Pin npm version
+        run: npm i -g npm@11.6.2
+
+      - name: Print tool versions
+        run: |
+          node --version
+          npm --version
+
       - name: Install Node dependencies
         run: npm ci
 
