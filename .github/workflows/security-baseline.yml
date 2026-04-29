@@ -34,7 +34,7 @@ jobs:
 
       - name: Enforce safe target=_blank usage
         run: |
-          if rg -n --pcre2 'target="_blank"(?![^>]*rel="noopener noreferrer")' src; then
+          if grep -RInE 'target="_blank"' src | grep -v 'rel="noopener noreferrer"'; then
             echo "Blocked: target=\"_blank\" must include rel=\"noopener noreferrer\""
             exit 1
           fi
